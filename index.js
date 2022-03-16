@@ -4,8 +4,8 @@ const app = express()
 const {handleAll} = require("./config/db")
 const {router:restaurentRouter} = require("./controllers/restaurent.controller")
 const {router:userRouter} = require("./controllers/user.controllers")
+var cors = require('cors')
 app.use(express.json())
-
 
 
 
@@ -13,8 +13,8 @@ app.use(express.json())
 app.get("/",async(req,res)=>{
     res.status(200).json({"message":"Server started successfully"})
 })
-app.use("/users",userRouter)
-app.use("/restaurents",restaurentRouter)
+app.use("/users",cors(),userRouter)
+app.use("/restaurents",cors(),restaurentRouter)
 
 const port = process.env.PORT || 3000;
 

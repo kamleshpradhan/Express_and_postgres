@@ -1,0 +1,13 @@
+.input{
+    border-radius: 5px;
+    border-color: skyblue;
+}
+.input:hover{
+    border-color: lightgreen;
+}
+
+.updateButton:hover{
+    border-radius: 50px;
+    color:lightgreen;
+    background-color: lightgreen;
+}

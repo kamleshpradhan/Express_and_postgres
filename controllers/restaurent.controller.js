@@ -6,7 +6,6 @@ const {ReasonPhrases,StatusCodes,getReasonPhrase,getStatusCode,} = require('http
 router.get("",async(req,res)=>{
     try{
     const response  = await client.query("SELECT * FROM restaurents")
-    console.log(response)
     res.status(200).send(response.rows)
     }catch(err){
         console.log(err)
@@ -15,7 +14,8 @@ router.get("",async(req,res)=>{
 })
 router.get("/:id",async(req,res)=>{
     try{
-        const response = await client.query(`SELECT * FROM restaurents WHERE id = ${req.params.id}`)
+        // to prevent sql injection we use the array or parametrised query
+        const response = await client.query(`SELECT * FROM restaurents WHERE id = $1`,[req.params.id])
         res.status(StatusCodes.OK).json({"restaurent":response.rows})
     }catch(err){
         console.log(err)
@@ -28,35 +28,43 @@ router.post("",async(req,res)=>{
     let arr = resp.rows
     for(let j of arr){
         if(j.name==req.body.name){
-            res.status(StatusCodes.METHOD_NOT_ALLOWED).json({message:getReasonPhrase(StatusCodes.METHOD_NOT_ALLOWED),reason:"Restaurent is already present."})
+            res.status(StatusCodes.ACCEPTED).json({status:getReasonPhrase(StatusCodes.METHOD_NOT_ALLOWED),reason:"Restaurent is already present."})
             return
         }
     }
     try{
-        const value = await schema.validateAsync({name:req.body.name,locations:req.body.locations,price_range:req.body.price_range});
+        const value = await schema.validateAsync({name:req.body.name,locations:req.body.location,price_range:req.body.price});
         const insert_query = "INSERT INTO restaurents(name,locations,price_range) VALUES($1,$2,$3) RETURNING *"
         const response = await client.query(insert_query,[value.name,value.locations,value.price_range])
         if(response){
-         res.status(StatusCodes.CREATED).send({message:getReasonPhrase(StatusCodes.CREATED)})
+         res.status(StatusCodes.CREATED).json({message:getReasonPhrase(StatusCodes.CREATED)})
      }
      }catch(err){
-         res.status(StatusCodes.NOT_ACCEPTABLE).json({error:err["details"]})
+         res.status(StatusCodes.ACCEPTED).json({status:getReasonPhrase(StatusCodes.METHOD_NOT_ALLOWED), reason:err["details"]})
      }
 })
 
 
 router.put("/:id",async(req,res)=>{
-    let resp = await client.query(`SELECT * FROM restaurents WHERE id = ${req.params.id}`)
+    let resp = await client.query(`SELECT * FROM restaurents WHERE id = $1`,[req.params.id])
     if(resp.rowCount==0){
         res.status(StatusCodes.NOT_FOUND).json({"message":`Restaurent with id: ${req.params.id} not found.`})
         return;
     }
-    console.log(req.body)
+    try{
+    const response = await client.query("UPDATE restaurents SET name=$1 ,locations=$2,price_range=$3 WHERE id=$4 returning *",[req.body.name,req.body.locations,req.body.price_range,req.params.id])
+    if(response){
+        res.status(StatusCodes.ACCEPTED).json({"status":getReasonPhrase(StatusCodes.ACCEPTED),"message":response.rows[0]})
+    }
+    }catch(err){
+        console.log(err)
+        res.status(StatusCodes.BAD_GATEWAY).json({status:getReasonPhrase(StatusCodes.BAD_GATEWAY),"message":"Update was not completed"})
+    }
 })
 
 
 router.delete("/:id",async(req,res)=>{
-    let resp = await  client.query(`SELECT * FROM restaurents WHERE id = ${req.params.id}`)
+    let resp = await  client.query(`SELECT * FROM restaurents WHERE id = $1`,[req.params.id])
     if(resp.rowCount==0){
         res.status(StatusCodes.NOT_FOUND).json({"message":`Restaurent with id: ${req.params.id} not found.`})
         return;
